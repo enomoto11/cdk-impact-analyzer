@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - name: Cache e2e fixtures
+        uses: actions/cache@v4
+        with:
+          path: .e2e-cache
+          key: e2e-fixtures-${{ hashFiles('e2e-fixtures.json') }}
+
+      - run: pnpm e2e:setup
+
+      - run: pnpm test
+
+      - run: pnpm build
+
+      - name: Verify dist/ is up to date
+        run: |
+          if [ -n "$(git status --porcelain dist/)" ]; then
+            echo "::error::dist/ is not up to date. Run 'pnpm build' locally and commit the result."
+            git diff dist/
+            exit 1
+          fi
