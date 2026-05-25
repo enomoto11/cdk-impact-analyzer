@@ -1,6 +1,7 @@
 node_modules/
 lib/
 coverage/
+.e2e-cache/
 *.log
 .DS_Store
 .env

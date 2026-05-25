@@ -3,6 +3,7 @@ import * as path from 'node:path';
 
 import * as core from '@actions/core';
 
+import { analyze, type ChangedFile } from './analyzer';
 import { detectCdkProject } from './project-detector';
 
 async function run(): Promise<void> {
@@ -32,15 +33,14 @@ async function run(): Promise<void> {
       return;
     }
 
-    // TODO(1): resolve diff source (PR number or base/head refs) → unified diff
-    // TODO(2): map diff hunks → changed symbols using ts-morph
-    // TODO(3): trace references upward to a Stack instantiation
-    // TODO(4): emit unique stack names, deduplicating shared instantiation sites
+    // TODO(diff): resolve diff source (PR number or base/head refs) into ChangedFile[]
+    const changes: ChangedFile[] = [];
 
-    const affectedStacks: string[] = [];
-    core.setOutput('affected-stacks', JSON.stringify(affectedStacks));
-    core.setOutput('affected-stack-count', affectedStacks.length.toString());
-    core.info(`Affected stacks: ${affectedStacks.length}`);
+    const result = await analyze({ projectPath, tsconfigPath, changes });
+
+    core.setOutput('affected-stacks', JSON.stringify(result.affectedStacks));
+    core.setOutput('affected-stack-count', result.affectedStacks.length.toString());
+    core.info(`Affected stacks: ${result.affectedStacks.length}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     core.setFailed(message);

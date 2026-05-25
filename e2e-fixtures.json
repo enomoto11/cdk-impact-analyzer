@@ -1,0 +1,7 @@
+{
+  "aws-cdk-examples": {
+    "repo": "https://github.com/aws-samples/aws-cdk-examples.git",
+    "sha": "8576fa67dd5e65cc3582303a563cf1ca299642ca",
+    "sparsePaths": ["typescript/"]
+  }
+}

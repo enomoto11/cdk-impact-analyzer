@@ -11,7 +11,8 @@
     "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e:setup": "node scripts/setup-e2e.mjs"
   },
   "keywords": [
     "aws",
