@@ -153,12 +153,35 @@ function isStackSubclass(decl: ClassDeclaration, visited: Set<ClassDeclaration>)
   if (text === 'Stack') return true;
   if (text.endsWith('.Stack')) return true;
 
+  if (Node.isIdentifier(expr) && referencesNamedExportFromModule(expr, 'aws-cdk-lib', 'Stack')) {
+    return true;
+  }
+
   const sym = expr.getSymbol();
   if (sym) {
     for (const d of followAliases(sym).getDeclarations()) {
       if (d.getKind() === SyntaxKind.ClassDeclaration) {
         if (isStackSubclass(d as ClassDeclaration, visited)) return true;
       }
+    }
+  }
+  return false;
+}
+
+function referencesNamedExportFromModule(
+  id: Node,
+  moduleSpecifier: string,
+  exportName: string,
+): boolean {
+  if (!Node.isIdentifier(id)) return false;
+  const localName = id.getText();
+  for (const imp of id.getSourceFile().getImportDeclarations()) {
+    if (imp.getModuleSpecifierValue() !== moduleSpecifier) continue;
+    for (const ns of imp.getNamedImports()) {
+      const struct = ns.getStructure();
+      const importedName = struct.name;
+      const usedName = struct.alias ?? struct.name;
+      if (usedName === localName && importedName === exportName) return true;
     }
   }
   return false;
