@@ -1,0 +1,39 @@
+name: 'CDK Impact Analyzer'
+description: 'Trace TypeScript symbol references from a PR diff to list the affected AWS CDK stacks.'
+author: 'enomoto-togo'
+branding:
+  icon: 'git-branch'
+  color: 'orange'
+
+inputs:
+  pr-number:
+    description: 'GitHub PR number to analyze. If omitted, pass both base-ref and head-ref.'
+    required: false
+  base-ref:
+    description: 'Base git ref (e.g. origin/main). Required when pr-number is omitted.'
+    required: false
+  head-ref:
+    description: 'Head git ref (e.g. HEAD). Required when pr-number is omitted.'
+    required: false
+  project-path:
+    description: 'Path to the CDK project root in the runner workspace.'
+    required: false
+    default: '.'
+  tsconfig-path:
+    description: 'Path to tsconfig.json relative to project-path.'
+    required: false
+    default: 'tsconfig.json'
+  github-token:
+    description: 'GitHub token for PR API access.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  affected-stacks:
+    description: 'JSON array of affected CDK stack names.'
+  affected-stack-count:
+    description: 'Number of affected CDK stacks.'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

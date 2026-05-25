@@ -1,0 +1,36 @@
+{
+  "name": "cdk-impact-analyzer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GitHub Action that analyzes a PR diff and detects affected AWS CDK stacks via TypeScript symbol reference tracing.",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "aws",
+    "cdk",
+    "github-action",
+    "impact-analysis",
+    "typescript",
+    "ts-morph"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
+    "ts-morph": "^28.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@vercel/ncc": "^0.38.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  }
+}
