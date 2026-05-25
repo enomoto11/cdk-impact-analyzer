@@ -48,6 +48,45 @@ describe.skipIf(!isAvailable)(
       expect(result.affectedStacks).toEqual([]);
       expect(result.traces).toEqual([]);
     });
+
+    describe('changedLineRanges narrowing in lib/sample-service-stack.ts', () => {
+      // lib/sample-service-stack.ts (pinned SHA):
+      //   10-12: export interface AStackProps ...
+      //   13-61: export class AStack extends cdk.Stack { ... }
+      //      62: (blank)
+      //   63-65: export interface BStackProps ...
+      //  66-114: export class BStack extends cdk.Stack { ... }
+
+      const file = 'lib/sample-service-stack.ts';
+
+      it('only AStack class lines (13-61) → [AStack]', async () => {
+        const result = await runE2e(projectPath, [file], {
+          changedLineRanges: { [file]: [{ startLine: 13, endLineExclusive: 62 }] },
+        });
+        expect(result.affectedStacks).toEqual(['AStack']);
+      });
+
+      it('only BStack class lines (66-114) → [BStack]', async () => {
+        const result = await runE2e(projectPath, [file], {
+          changedLineRanges: { [file]: [{ startLine: 66, endLineExclusive: 115 }] },
+        });
+        expect(result.affectedStacks).toEqual(['BStack']);
+      });
+
+      it('only the blank line between classes (62) → []', async () => {
+        const result = await runE2e(projectPath, [file], {
+          changedLineRanges: { [file]: [{ startLine: 62, endLineExclusive: 63 }] },
+        });
+        expect(result.affectedStacks).toEqual([]);
+      });
+
+      it('only AStackProps interface (lines 10-12) → [AStack] (Props reached via constructor signature)', async () => {
+        const result = await runE2e(projectPath, [file], {
+          changedLineRanges: { [file]: [{ startLine: 10, endLineExclusive: 13 }] },
+        });
+        expect(result.affectedStacks).toEqual(['AStack']);
+      });
+    });
   },
 );
 

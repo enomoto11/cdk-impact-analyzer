@@ -4,7 +4,7 @@ import * as path from 'node:path';
 
 import * as github from '@actions/github';
 
-import type { ChangedFile } from './analyzer';
+import type { ChangedFile, ChangedLineRange } from './analyzer';
 
 export interface DiffResolveInput {
   projectPath: string;
@@ -19,18 +19,47 @@ export async function resolveChangedFiles(input: DiffResolveInput): Promise<Chan
 
   const output = execFileSync(
     'git',
-    ['diff', '--name-only', '--diff-filter=AMR', '--relative', `${base}...${head}`],
+    ['diff', '-U0', '--no-color', '--diff-filter=AMR', '--relative', `${base}...${head}`],
     { cwd: input.projectPath, encoding: 'utf8' },
   );
 
+  const hunks = parseDiffHunks(output);
+
   const result: ChangedFile[] = [];
-  for (const line of output.split('\n')) {
-    const rel = line.trim();
-    if (!rel) continue;
-    const abs = path.resolve(input.projectPath, rel);
+  for (const [relPath, ranges] of hunks) {
+    const abs = path.resolve(input.projectPath, relPath);
     if (!fs.existsSync(abs)) continue;
-    result.push({ path: abs });
+    result.push({ path: abs, changedLineRanges: ranges });
   }
+  return result;
+}
+
+export function parseDiffHunks(diff: string): Map<string, ChangedLineRange[]> {
+  const result = new Map<string, ChangedLineRange[]>();
+  let currentFile: string | null = null;
+
+  for (const line of diff.split('\n')) {
+    if (line.startsWith('diff --git ')) {
+      const m = line.match(/^diff --git a\/.+? b\/(.+)$/);
+      currentFile = m && m[1] ? m[1] : null;
+      continue;
+    }
+    if (!currentFile) continue;
+    if (!line.startsWith('@@')) continue;
+
+    const m = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+    if (!m || !m[1]) continue;
+    const start = Number(m[1]);
+    const count = m[2] !== undefined ? Number(m[2]) : 1;
+    if (count === 0) continue;
+    let arr = result.get(currentFile);
+    if (!arr) {
+      arr = [];
+      result.set(currentFile, arr);
+    }
+    arr.push({ startLine: start, endLineExclusive: start + count });
+  }
+
   return result;
 }
 

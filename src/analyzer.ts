@@ -38,29 +38,45 @@ export interface AnalyzeResult {
 interface StackInstantiation {
   id: string;
   classDecl: ClassDeclaration;
+  site: Node;
   siteFile: string;
 }
 
 export async function analyze(input: AnalyzeInput): Promise<AnalyzeResult> {
   const project = new Project({ tsConfigFilePath: input.tsconfigPath });
 
-  const changedFilePaths = new Set(input.changes.map((c) => path.resolve(c.path)));
-  const instantiations = findStackInstantiations(project);
+  const changedFilesByPath = new Map<string, ChangedFile>();
+  for (const c of input.changes) {
+    changedFilesByPath.set(path.resolve(c.path), c);
+  }
 
-  const closureMemo = new Map<ClassDeclaration, Set<string>>();
+  const instantiations = findStackInstantiations(project);
+  const closureMemo = new Map<ClassDeclaration, Set<Node>>();
   const stackToReachedFrom = new Map<string, Set<string>>();
 
   for (const inst of instantiations) {
-    const affecting = computeAffectingFiles(inst, closureMemo);
-    for (const changedPath of changedFilePaths) {
-      if (!affecting.has(changedPath)) continue;
-      let reached = stackToReachedFrom.get(inst.id);
-      if (!reached) {
-        reached = new Set();
-        stackToReachedFrom.set(inst.id, reached);
-      }
-      reached.add(changedPath);
+    const reachedFrom = new Set<string>();
+
+    const siteCf = changedFilesByPath.get(inst.siteFile);
+    if (siteCf && overlapsRanges(inst.site, siteCf.changedLineRanges)) {
+      reachedFrom.add(inst.siteFile);
     }
+
+    for (const decl of closureOf(inst.classDecl, closureMemo)) {
+      const declFile = path.resolve(decl.getSourceFile().getFilePath());
+      const cf = changedFilesByPath.get(declFile);
+      if (!cf) continue;
+      if (!overlapsRanges(decl, cf.changedLineRanges)) continue;
+      reachedFrom.add(declFile);
+    }
+
+    if (reachedFrom.size === 0) continue;
+    let acc = stackToReachedFrom.get(inst.id);
+    if (!acc) {
+      acc = new Set();
+      stackToReachedFrom.set(inst.id, acc);
+    }
+    for (const f of reachedFrom) acc.add(f);
   }
 
   const affectedStacks = Array.from(stackToReachedFrom.keys()).sort();
@@ -70,6 +86,16 @@ export async function analyze(input: AnalyzeInput): Promise<AnalyzeResult> {
   }));
 
   return { affectedStacks, traces };
+}
+
+function overlapsRanges(node: Node, ranges: ChangedLineRange[] | undefined): boolean {
+  if (!ranges) return true;
+  const start = node.getStartLineNumber();
+  const end = node.getEndLineNumber();
+  for (const r of ranges) {
+    if (start < r.endLineExclusive && end >= r.startLine) return true;
+  }
+  return false;
 }
 
 function findStackInstantiations(project: Project): StackInstantiation[] {
@@ -87,6 +113,7 @@ function findStackInstantiations(project: Project): StackInstantiation[] {
       out.push({
         id: idArg.getLiteralText(),
         classDecl,
+        site: node,
         siteFile: path.resolve(sf.getFilePath()),
       });
     });
@@ -137,23 +164,13 @@ function isStackSubclass(decl: ClassDeclaration, visited: Set<ClassDeclaration>)
   return false;
 }
 
-function computeAffectingFiles(
-  inst: StackInstantiation,
-  memo: Map<ClassDeclaration, Set<string>>,
-): Set<string> {
-  const result = new Set<string>();
-  result.add(inst.siteFile);
-  for (const f of closureOf(inst.classDecl, memo)) result.add(f);
-  return result;
-}
-
 function closureOf(
   classDecl: ClassDeclaration,
-  memo: Map<ClassDeclaration, Set<string>>,
-): Set<string> {
+  memo: Map<ClassDeclaration, Set<Node>>,
+): Set<Node> {
   const cached = memo.get(classDecl);
   if (cached) return cached;
-  const result = new Set<string>();
+  const result = new Set<Node>([classDecl]);
   memo.set(classDecl, result);
 
   const queue: Node[] = [classDecl];
@@ -161,8 +178,6 @@ function closureOf(
 
   while (queue.length > 0) {
     const current = queue.shift()!;
-    const sf = current.getSourceFile();
-    if (!isExternal(sf)) result.add(path.resolve(sf.getFilePath()));
 
     current.forEachDescendant((d) => {
       if (!Node.isIdentifier(d)) return;
@@ -176,6 +191,7 @@ function closureOf(
         if (!topDecl) continue;
         if (visited.has(topDecl)) continue;
         visited.add(topDecl);
+        result.add(topDecl);
         queue.push(topDecl);
       }
     });
