@@ -109,7 +109,18 @@ function findStackInstantiations(project: Project): StackInstantiation[] {
       if (!isStackSubclass(classDecl, new Set())) return;
       const args = node.getArguments();
       const idArg = args[1];
-      if (!idArg || !Node.isStringLiteral(idArg)) return;
+      if (!idArg) return;
+      if (!Node.isStringLiteral(idArg)) {
+        // TODO: support non-string-literal ids (template literals, vars, function calls,
+        // property access). For now we skip and warn so users can spot missed stacks.
+        const className = classDecl.getName() ?? '<anonymous>';
+        const where = `${sf.getFilePath()}:${node.getStartLineNumber()}`;
+        console.warn(
+          `[cdk-impact-analyzer] Skipped stack instantiation with non-string-literal id: ` +
+            `${className} at ${where}, id expression: \`${idArg.getText()}\``,
+        );
+        return;
+      }
       out.push({
         id: idArg.getLiteralText(),
         classDecl,
