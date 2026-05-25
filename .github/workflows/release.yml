@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - name: Cache e2e fixtures
+        uses: actions/cache@v4
+        with:
+          path: .e2e-cache
+          key: e2e-fixtures-${{ hashFiles('e2e-fixtures.json') }}
+
+      - run: pnpm e2e:setup
+
+      - run: pnpm test
+
+      - run: pnpm build
+
+      - name: Verify dist/ matches source at tagged commit
+        run: |
+          if [ -n "$(git status --porcelain dist/)" ]; then
+            echo "::error::dist/ is not up to date at $GITHUB_REF_NAME. Run 'pnpm build' locally and recommit before tagging."
+            git diff dist/
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
+
+      - name: Move major version tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            MAJOR=$(echo "$TAG" | sed -E 's/^v([0-9]+)\..+$/v\1/')
+            git tag -f "$MAJOR" "$TAG"
+            git push -f origin "$MAJOR"
+            echo "Moved $MAJOR -> $TAG"
+          else
+            echo "Skipping major tag move for non-stable tag $TAG"
+          fi
