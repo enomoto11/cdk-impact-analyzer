@@ -1,5 +1,5 @@
 name: 'CDK Impact Analyzer'
-description: 'Trace TypeScript symbol references from a PR diff to list the affected AWS CDK stacks.'
+description: 'Find the AWS CDK stacks a pull request affects by tracing TypeScript symbol references.'
 author: 'enomoto11'
 branding:
   icon: 'git-branch'
