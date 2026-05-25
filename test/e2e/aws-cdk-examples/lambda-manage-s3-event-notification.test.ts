@@ -20,22 +20,34 @@ describe.skipIf(!isAvailable)(
       expect(fs.existsSync(path.join(projectPath, 'lib/sample-service-stack.ts'))).toBe(true);
     });
 
-    it('returns an empty result with no changes (harness wiring)', async () => {
+    it('returns an empty result with no changes', async () => {
       const result = await runE2e(projectPath, []);
       expect(result.affectedStacks).toEqual([]);
       expect(result.traces).toEqual([]);
     });
 
-    it.todo(
-      'change to bin/lambda-manage-s3-event-notifications.ts → [SharedStack, AStack, BStack] (all)',
-    );
-    it.todo('change to lib/shared-resources-stack.ts → [SharedStack] only');
-    it.todo(
-      'change to lib/sample-service-stack.ts → [AStack, BStack] (two stacks share one file)',
-    );
-    it.todo(
-      'change to lambda/manage-s3-event-notifications.js (non-TS asset) → [] (spec: skip non-TS files)',
-    );
+    it('change to bin/lambda-manage-s3-event-notifications.ts → [AStack, BStack, SharedStack] (all)', async () => {
+      const result = await runE2e(projectPath, [
+        'bin/lambda-manage-s3-event-notifications.ts',
+      ]);
+      expect(result.affectedStacks).toEqual(['AStack', 'BStack', 'SharedStack']);
+    });
+
+    it('change to lib/shared-resources-stack.ts → [SharedStack] only', async () => {
+      const result = await runE2e(projectPath, ['lib/shared-resources-stack.ts']);
+      expect(result.affectedStacks).toEqual(['SharedStack']);
+    });
+
+    it('change to lib/sample-service-stack.ts → [AStack, BStack] (two stacks share one file)', async () => {
+      const result = await runE2e(projectPath, ['lib/sample-service-stack.ts']);
+      expect(result.affectedStacks).toEqual(['AStack', 'BStack']);
+    });
+
+    it('change to lambda/manage-s3-event-notifications.js (non-TS asset) → []', async () => {
+      const result = await runE2e(projectPath, ['lambda/manage-s3-event-notifications.js']);
+      expect(result.affectedStacks).toEqual([]);
+      expect(result.traces).toEqual([]);
+    });
   },
 );
 
