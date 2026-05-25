@@ -3,7 +3,8 @@ import * as path from 'node:path';
 
 import * as core from '@actions/core';
 
-import { analyze, type ChangedFile } from './analyzer';
+import { analyze } from './analyzer';
+import { resolveChangedFiles } from './diff';
 import { detectCdkProject } from './project-detector';
 
 async function run(): Promise<void> {
@@ -33,14 +34,24 @@ async function run(): Promise<void> {
       return;
     }
 
-    // TODO(diff): resolve diff source (PR number or base/head refs) into ChangedFile[]
-    const changes: ChangedFile[] = [];
+    const changes = await resolveChangedFiles({
+      projectPath,
+      prNumber: core.getInput('pr-number') || undefined,
+      baseRef: core.getInput('base-ref') || undefined,
+      headRef: core.getInput('head-ref') || undefined,
+      githubToken: core.getInput('github-token') || undefined,
+    });
+
+    core.info(`Resolved ${changes.length} changed file(s) from diff.`);
 
     const result = await analyze({ projectPath, tsconfigPath, changes });
 
     core.setOutput('affected-stacks', JSON.stringify(result.affectedStacks));
     core.setOutput('affected-stack-count', result.affectedStacks.length.toString());
     core.info(`Affected stacks: ${result.affectedStacks.length}`);
+    for (const trace of result.traces) {
+      core.info(`  - ${trace.stackName} (reached via ${trace.reachedFrom.length} file(s))`);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     core.setFailed(message);
