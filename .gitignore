@@ -8,4 +8,6 @@ coverage/
 .env.*
 !.env.example
 
+scripts/local/
+
 # dist/ is intentionally tracked: GitHub Actions executes the bundled output.
