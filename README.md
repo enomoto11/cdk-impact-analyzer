@@ -17,11 +17,11 @@ is the output.
 
 ## Scope
 
-- MVP: TypeScript CDK projects only.
+- TypeScript CDK projects only.
 - Check out the target CDK repository before this action runs. If `project-path` has
   no readable `cdk.json`, the action exits.
-- Other host languages (Python, Go, Java) are out of scope for the MVP. Each will
-  need its own language-server adapter.
+- Other host languages (Python, Go, Java) would each need their own language-server
+  adapter, which this action does not provide.
 
 ## Usage
 
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: OWNER/cdk-impact-analyzer@v1
+      - uses: enomoto11/cdk-impact-analyzer@v1
         id: impact
         with:
           pr-number: ${{ github.event.pull_request.number }}
@@ -50,13 +50,12 @@ jobs:
 ```
 
 `fetch-depth: 0` is required so the action can read both ends of the PR diff
-locally. Replace `OWNER/cdk-impact-analyzer@v1` with the actual repository and
-ref you publish.
+locally.
 
 Pass explicit refs instead of `pr-number` for push events or local dispatch:
 
 ```yaml
-      - uses: OWNER/cdk-impact-analyzer@v1
+      - uses: enomoto11/cdk-impact-analyzer@v1
         with:
           base-ref: origin/main
           head-ref: HEAD
