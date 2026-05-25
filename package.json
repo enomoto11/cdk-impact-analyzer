@@ -22,7 +22,16 @@
     "typescript",
     "ts-morph"
   ],
+  "author": "enomoto11",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/enomoto11/cdk-impact-analyzer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/enomoto11/cdk-impact-analyzer/issues"
+  },
+  "homepage": "https://github.com/enomoto11/cdk-impact-analyzer#readme",
   "dependencies": {
     "@actions/core": "^3.0.1",
     "@actions/github": "^9.1.1",
